@@ -36,7 +36,7 @@ sequenceDiagram
 
 ```mermaid
 flowchart TD
-    A[Người dùng tạo giao dịch CHI CHI] --> B[Hệ thống cập nhật Số dư Ví & Tổng chi danh mục trong tháng]
+    A[Người dùng tạo giao dịch CHI] --> B[Hệ thống cập nhật Số dư Ví & Tổng chi danh mục trong tháng]
     B --> C{Danh mục này có thiết lập Ngân sách tháng không?}
     C -- Không --> D[Hoàn tất giao dịch]
     C -- Có --> E[Tính tỷ lệ: Spent_Amount / Budget_Amount * 100%]
