@@ -82,4 +82,4 @@ flutter run
 
 ## 📜 Giấy Phép & Tác Giả
 - **Dự án**: Finance Manager
-- **Tác giả**: trieuunv
+
