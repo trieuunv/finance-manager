@@ -30,7 +30,8 @@ graph TD
 
 ---
 
-## 📂 Cấu Trúc Thư Mục Dự Án
+## 📂 cấu trúc thư mục dự án
+
 
 ```text
 finance-manager/
