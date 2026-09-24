@@ -43,6 +43,7 @@ finance-manager/
     ├── 03-Requirements-Analysis.md
     ├── 04-User-Stories-Acceptance-Criteria.md
     ├── 05-Feature-Specifications.md
+    ├── 06-AI-in-Requirement-Analysis-and-Product-Management.md
     └── README.md
 ```
 
@@ -59,6 +60,7 @@ Toàn bộ tài liệu phân tích kỹ thuật và sản phẩm được lưu t
 | 3 | 🧠 **[03. Phân Tích Yêu Cầu](documents/03-Requirements-Analysis.md)** | Luồng nghiệp vụ Sequence/Flowchart, Use Case, Mô hình Dữ liệu ERD & Traceability Matrix. |
 | 4 | ✍️ **[04. User Stories & Acceptance Criteria](documents/04-User-Stories-Acceptance-Criteria.md)** | Danh sách User Stories chi tiết kèm Tiêu chí chấp nhận dạng **Given-When-Then** (BDD). |
 | 5 | ⚙️ **[05. Đặc Tả Tính Năng](documents/05-Feature-Specifications.md)** | Đặc tả UI/UX, Logic nghiệp vụ, Chi tiết RESTful API Contracts & Error Codes. |
+| 6 | 🤖 **[06. AI trong Phân Tích Yêu Cầu & Quản Trị Sản Phẩm](documents/06-AI-in-Requirement-Analysis-and-Product-Management.md)** | Phương pháp luận ứng dụng AI trong quy trình Discovery, PRD, Modeling, BDD User Stories và API Design. |
 
 ---
 
