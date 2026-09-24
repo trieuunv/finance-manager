@@ -15,6 +15,7 @@ Bộ tài liệu này được xây dựng theo tiêu chuẩn phát triển ph�
 | 3 | 🧠 **[03. Phân Tích Yêu Cầu (Requirements Analysis)](03-Requirements-Analysis.md)** | Luồng nghiệp vụ (Business Flow), Sơ đồ Use Case, Mô hình dữ liệu thực thể (Data Model / ERD) và Ma trận phân vết yêu cầu (Traceability Matrix). |
 | 4 | ✍️ **[04. User Stories & Tiêu Chí Chấp Nhận](04-User-Stories-Acceptance-Criteria.md)** | Tập hợp các Epic, User Stories chi tiết theo chuẩn *As a... I want... So that...* kèm Tiêu chí chấp nhận chuẩn **Given-When-Then** (BDD). |
 | 5 | ⚙️ **[05. Đặc Tả Tính Năng (Feature Specifications)](05-Feature-Specifications.md)** | Chi tiết giao diện & tương tác (UI/UX), Quy tắc logic nghiệp vụ (Business Rules), API RESTful Contracts và xử lý lỗi/ngoại lệ. |
+| 6 | 🤖 **[06. AI trong Phân Tích Yêu Cầu & Quản Trị Sản Phẩm](06-AI-in-Requirement-Analysis-and-Product-Management.md)** | Phương pháp luận ứng dụng AI trong quy trình Discovery, PRD, Modeling, BDD User Stories và API Design. |
 
 ---
 
