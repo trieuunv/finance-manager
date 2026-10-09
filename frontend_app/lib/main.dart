@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import 'core/services/storage_service.dart';
 import 'data/models/user_model.dart';
 import 'data/services/auth_api_service.dart';
@@ -21,7 +22,7 @@ class FinanceManagerApp extends StatelessWidget {
       theme: ThemeData(
         brightness: Brightness.dark,
         scaffoldBackgroundColor: const Color(0xFF0F172A),
-        primarySwatch: Colors.sky,
+        primarySwatch: Colors.blue,
         useMaterial3: true,
       ),
       home: const AuthSplashWrapper(),
@@ -73,11 +74,7 @@ class _AuthSplashWrapperState extends State<AuthSplashWrapper> {
   @override
   Widget build(BuildContext context) {
     return const Scaffold(
-      body: Center(
-        child: CircularProgressIndicator(
-          color: Color(0xFF38BDF8),
-        ),
-      ),
+      body: Center(child: CircularProgressIndicator(color: Color(0xFF38BDF8))),
     );
   }
 }
