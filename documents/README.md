@@ -17,6 +17,7 @@ Bộ tài liệu này được xây dựng theo tiêu chuẩn phát triển ph�
 | 5 | ⚙️ **[05. Đặc Tả Tính Năng (Feature Specifications)](05-Feature-Specifications.md)** | Chi tiết giao diện & tương tác (UI/UX), Quy tắc logic nghiệp vụ (Business Rules), API RESTful Contracts và xử lý lỗi/ngoại lệ. |
 | 6 | 🤖 **[06. AI trong Phân Tích Yêu Cầu & Quản Trị Sản Phẩm](06-AI-in-Requirement-Analysis-and-Product-Management.md)** | Phương pháp luận ứng dụng AI trong quy trình Discovery, PRD, Modeling, BDD User Stories và API Design. |
 | 7 | 🎨 **[07. AI trong Thiết Kế Sản Phẩm](07-AI-in-Product-Design.md)** | Phương pháp ứng dụng AI vào Thiết kế Luồng Người dùng (User Flow), Wireframing, Dynamic Prototyping và AI Design Review (Accessibility/WCAG, Nielsen Heuristics). |
+| 8 | 🏗️ **[08. AI trong Thiết Kế & Kiến Trúc Phần Mềm](08-AI-in-Software-Architecture-and-Design.md)** | Phương pháp ứng dụng AI vào Thiết kế Kiến trúc (ADRs), Mô hình Kiến trúc (Modular Monolith & Clean Architecture), Mô hình hóa UML (C4 Model, Sequence, State), Thiết kế CSDL (ERD, Prisma), Thiết kế API (RESTful, OpenAPI 3.0, Idempotency) và Design Patterns. |
 
 ---
 
