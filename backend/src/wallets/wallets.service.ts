@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateWalletDto } from './dto/create-wallet.dto';
 import { UpdateWalletDto } from './dto/update-wallet.dto';
 import { TransferWalletDto } from './dto/transfer-wallet.dto';
+import { WalletType, TransactionType } from '@prisma/client';
 
 @Injectable()
 export class WalletsService {
@@ -14,13 +15,18 @@ export class WalletsService {
       orderBy: { createdAt: 'asc' },
     });
 
-    const netWorth = wallets
+    const serialized = wallets.map((w) => ({
+      ...w,
+      balance: Number(w.balance),
+    }));
+
+    const netWorth = serialized
       .filter((w) => !w.isExcludedFromTotal)
       .reduce((sum, w) => sum + w.balance, 0);
 
     return {
       success: true,
-      data: wallets,
+      data: serialized,
       netWorth,
     };
   }
@@ -34,7 +40,13 @@ export class WalletsService {
       throw new NotFoundException('Ví không tồn tại hoặc không thuộc về người dùng');
     }
 
-    return { success: true, data: wallet };
+    return {
+      success: true,
+      data: {
+        ...wallet,
+        balance: Number(wallet.balance),
+      },
+    };
   }
 
   async create(userId: string, dto: CreateWalletDto) {
@@ -42,14 +54,20 @@ export class WalletsService {
       data: {
         userId,
         name: dto.name,
-        type: dto.type || 'CASH',
-        balance: dto.balance || 0,
+        type: (dto.type as WalletType) || WalletType.CASH,
+        balance: dto.balance !== undefined ? dto.balance : 0,
         currency: dto.currency || 'VND',
         isExcludedFromTotal: dto.isExcludedFromTotal || false,
       },
     });
 
-    return { success: true, data: wallet };
+    return {
+      success: true,
+      data: {
+        ...wallet,
+        balance: Number(wallet.balance),
+      },
+    };
   }
 
   async update(userId: string, id: string, dto: UpdateWalletDto) {
@@ -57,10 +75,22 @@ export class WalletsService {
 
     const updated = await this.prisma.wallet.update({
       where: { id },
-      data: { ...dto },
+      data: {
+        name: dto.name,
+        type: dto.type ? (dto.type as WalletType) : undefined,
+        balance: dto.balance !== undefined ? dto.balance : undefined,
+        currency: dto.currency,
+        isExcludedFromTotal: dto.isExcludedFromTotal,
+      },
     });
 
-    return { success: true, data: updated };
+    return {
+      success: true,
+      data: {
+        ...updated,
+        balance: Number(updated.balance),
+      },
+    };
   }
 
   async remove(userId: string, id: string) {
@@ -74,22 +104,31 @@ export class WalletsService {
   }
 
   async transfer(userId: string, dto: TransferWalletDto) {
-    if (dto.fromWalletId === dto.toWalletId) {
+    const fromId = dto.sourceWalletId || dto.fromWalletId;
+    const toId = dto.destinationWalletId || dto.toWalletId;
+
+    if (!fromId || !toId) {
+      throw new BadRequestException('Vui lòng chỉ định ví nguồn và ví đích');
+    }
+
+    if (fromId === toId) {
       throw new BadRequestException('Ví chuyển và ví nhận phải khác nhau');
     }
 
     const fromWallet = await this.prisma.wallet.findFirst({
-      where: { id: dto.fromWalletId, userId },
+      where: { id: fromId, userId },
     });
     const toWallet = await this.prisma.wallet.findFirst({
-      where: { id: dto.toWalletId, userId },
+      where: { id: toId, userId },
     });
 
     if (!fromWallet || !toWallet) {
       throw new NotFoundException('Một trong các ví chuyển không hợp lệ');
     }
 
-    if (fromWallet.balance < dto.amount) {
+    const totalDebit = dto.amount + (dto.transferFee || 0);
+
+    if (Number(fromWallet.balance) < totalDebit) {
       throw new BadRequestException('Số dư trong ví không đủ để thực hiện chuyển khoản');
     }
 
@@ -98,7 +137,7 @@ export class WalletsService {
     const [updatedFrom, updatedTo, transaction] = await this.prisma.$transaction([
       this.prisma.wallet.update({
         where: { id: fromWallet.id },
-        data: { balance: { decrement: dto.amount } },
+        data: { balance: { decrement: totalDebit } },
       }),
       this.prisma.wallet.update({
         where: { id: toWallet.id },
@@ -108,10 +147,9 @@ export class WalletsService {
         data: {
           userId,
           walletId: fromWallet.id,
-          type: 'TRANSFER',
+          destinationWalletId: toWallet.id,
+          type: TransactionType.TRANSFER,
           amount: dto.amount,
-          fromWalletId: fromWallet.id,
-          toWalletId: toWallet.id,
           transactionDate: transferDate,
           note: dto.note || `Chuyển từ ${fromWallet.name} sang ${toWallet.name}`,
         },
@@ -123,8 +161,8 @@ export class WalletsService {
       message: 'Chuyển tiền giữa các ví thành công',
       data: {
         transactionId: transaction.id,
-        fromWalletNewBalance: updatedFrom.balance,
-        toWalletNewBalance: updatedTo.balance,
+        fromWalletNewBalance: Number(updatedFrom.balance),
+        toWalletNewBalance: Number(updatedTo.balance),
       },
     };
   }

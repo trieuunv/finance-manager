@@ -1,17 +1,29 @@
-import { IsDateString, IsNotEmpty, IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import { IsDateString, IsNumber, IsOptional, IsString, Min } from 'class-validator';
 
 export class TransferWalletDto {
   @IsString()
-  @IsNotEmpty()
-  fromWalletId: string;
+  @IsOptional()
+  fromWalletId?: string;
 
   @IsString()
-  @IsNotEmpty()
-  toWalletId: string;
+  @IsOptional()
+  sourceWalletId?: string;
+
+  @IsString()
+  @IsOptional()
+  toWalletId?: string;
+
+  @IsString()
+  @IsOptional()
+  destinationWalletId?: string;
 
   @IsNumber()
   @Min(0.01)
   amount: number;
+
+  @IsNumber()
+  @IsOptional()
+  transferFee?: number;
 
   @IsDateString()
   @IsOptional()

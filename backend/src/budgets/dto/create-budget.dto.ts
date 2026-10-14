@@ -1,13 +1,19 @@
-import { IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
+import { IsBoolean, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
 
 export class CreateBudgetDto {
   @IsString()
-  @IsOptional()
-  categoryId?: string;
+  @IsNotEmpty()
+  categoryId: string;
 
   @IsNumber()
   @Min(1)
-  amount: number;
+  @IsOptional()
+  amount?: number;
+
+  @IsNumber()
+  @Min(1)
+  @IsOptional()
+  limitAmount?: number;
 
   @IsInt()
   @Min(1)
@@ -17,4 +23,12 @@ export class CreateBudgetDto {
   @IsInt()
   @Min(2020)
   year: number;
+
+  @IsBoolean()
+  @IsOptional()
+  notifyAt80?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  notifyAt100?: boolean;
 }

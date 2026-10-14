@@ -1,4 +1,6 @@
-// Prisma Schema for Finance Manager (PostgreSQL)
+// Prisma Schema cho Finance Manager (PostgreSQL 16)
+// Phiên bản Mở Rộng: Tags, Savings Goals, Debts, Receipt OCR, Multi-Currency
+// Theo tài liệu 08-AI-in-Software-Architecture-and-Design.md (Mục 5.4.3)
 
 generator client {
   provider = "prisma-client-js"
@@ -9,38 +11,328 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id            String          @id @default(uuid())
-  email         String          @unique
-  password      String
-  fullName      String
-  baseCurrency  String          @default("VND")
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
+enum WalletType {
+  CASH
+  BANK
+  E_WALLET
+  SAVINGS
+  CREDIT
+}
 
-  wallets       Wallet[]
-  resetTokens   PasswordReset[]
+enum TransactionType {
+  EXPENSE
+  INCOME
+  TRANSFER
+}
+
+enum SyncStatus {
+  PENDING
+  SYNCED
+  CONFLICT
+}
+
+enum FrequencyType {
+  DAILY
+  WEEKLY
+  MONTHLY
+  YEARLY
+}
+
+enum GoalStatus {
+  IN_PROGRESS
+  ACHIEVED
+  CANCELLED
+}
+
+enum DebtType {
+  BORROWED   // Người dùng đi vay
+  LENT       // Người dùng cho người khác vay
+}
+
+enum DebtStatus {
+  ACTIVE
+  FULLY_PAID
+  DEFAULTED
+}
+
+model User {
+  id                    String                 @id @default(uuid())
+  email                 String                 @unique
+  password              String
+  fullName              String
+  baseCurrency          String                 @default("VND")
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+
+  wallets               Wallet[]
+  categories            Category[]
+  transactions          Transaction[]
+  budgets               Budget[]
+  tags                  Tag[]
+  savingsGoals          SavingsGoal[]
+  debtsLoans            DebtLoan[]
+  recurringTransactions RecurringTransaction[]
+  resetTokens           PasswordReset[]
+  syncAuditLogs         SyncAuditLog[]
+
+  @@map("users")
 }
 
 model Wallet {
-  id           String   @id @default(uuid())
-  userId       String
-  name         String
-  type         String   @default("CASH") // CASH, BANK, E_WALLET
-  balance      Float    @default(0.0)
-  currency     String   @default("VND")
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id                    String                      @id @default(uuid())
+  userId                String
+  name                  String
+  type                  WalletType                  @default(CASH)
+  balance               Decimal                     @default(0.0) @db.Decimal(15, 2)
+  currency              String                      @default("VND")
+  isExcludedFromTotal   Boolean                     @default(false)
+  createdAt             DateTime                    @default(now())
+  updatedAt             DateTime                    @updatedAt
 
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user                  User                        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions          Transaction[]               @relation("SourceWallet")
+  transfersReceived     Transaction[]               @relation("DestinationWallet")
+  goalContributions     SavingsGoalContribution[]
+  debtPayments          DebtPayment[]
+  recurringTransactions RecurringTransaction[]
+
+  @@index([userId])
+  @@map("wallets")
+}
+
+model Category {
+  id                    String                 @id @default(uuid())
+  userId                String?                // Null nếu là System Category
+  parentId              String?
+  name                  String
+  type                  TransactionType        @default(EXPENSE)
+  icon                  String                 @default("category")
+  color                 String                 @default("#4CAF50")
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+
+  user                  User?                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent                Category?              @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children              Category[]             @relation("CategoryHierarchy")
+  transactions          Transaction[]
+  budgets               Budget[]
+  recurringTransactions RecurringTransaction[]
+
+  @@index([userId])
+  @@index([parentId])
+  @@map("categories")
+}
+
+model Transaction {
+  id                    String                 @id @default(uuid()) // UUIDv4 được sinh từ Client hoặc Server
+  userId                String
+  walletId              String
+  categoryId            String?
+  destinationWalletId   String?
+  amount                Decimal                @db.Decimal(15, 2)
+  type                  TransactionType
+  transactionDate       DateTime
+  note                  String?
+  syncStatus            SyncStatus             @default(SYNCED)
+  clientCreatedAt       DateTime?
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+
+  user                  User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  wallet                Wallet                 @relation("SourceWallet", fields: [walletId], references: [id], onDelete: Cascade)
+  destinationWallet     Wallet?                @relation("DestinationWallet", fields: [destinationWalletId], references: [id], onDelete: SetNull)
+  category              Category?              @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  tags                  TransactionTag[]
+  receipts              ReceiptAttachment[]
+
+  @@index([userId, transactionDate(sort: Desc)])
+  @@index([walletId])
+  @@index([categoryId])
+  @@map("transactions")
+}
+
+model Tag {
+  id                    String                 @id @default(uuid())
+  userId                String
+  name                  String
+  color                 String                 @default("#2196F3")
+  createdAt             DateTime               @default(now())
+
+  user                  User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions          TransactionTag[]
+
+  @@unique([userId, name])
+  @@map("tags")
+}
+
+model TransactionTag {
+  transactionId         String
+  tagId                 String
+
+  transaction           Transaction            @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  tag                   Tag                    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([transactionId, tagId])
+  @@map("transaction_tags")
+}
+
+model Budget {
+  id                    String                 @id @default(uuid())
+  userId                String
+  categoryId            String
+  limitAmount           Decimal                @db.Decimal(15, 2)
+  spentAmount           Decimal                @default(0.0) @db.Decimal(15, 2)
+  month                 Int                    // 1 - 12
+  year                  Int                    // e.g., 2026
+  notifyAt80            Boolean                @default(true)
+  notifyAt100           Boolean                @default(true)
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+
+  user                  User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category              Category               @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, categoryId, month, year])
+  @@map("budgets")
+}
+
+model SavingsGoal {
+  id                    String                      @id @default(uuid())
+  userId                String
+  name                  String
+  targetAmount          Decimal                     @db.Decimal(15, 2)
+  currentAmount         Decimal                     @default(0.0) @db.Decimal(15, 2)
+  targetDate            DateTime?
+  status                GoalStatus                  @default(IN_PROGRESS)
+  createdAt             DateTime                    @default(now())
+  updatedAt             DateTime                    @updatedAt
+
+  user                  User                        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contributions         SavingsGoalContribution[]
+
+  @@index([userId])
+  @@map("savings_goals")
+}
+
+model SavingsGoalContribution {
+  id                    String                 @id @default(uuid())
+  savingsGoalId         String
+  walletId              String
+  amount                Decimal                @db.Decimal(15, 2)
+  contributionDate      DateTime               @default(now())
+  note                  String?
+
+  savingsGoal           SavingsGoal            @relation(fields: [savingsGoalId], references: [id], onDelete: Cascade)
+  wallet                Wallet                 @relation(fields: [walletId], references: [id], onDelete: Restrict)
+
+  @@map("savings_goal_contributions")
+}
+
+model DebtLoan {
+  id                    String                 @id @default(uuid())
+  userId                String
+  personName            String
+  type                  DebtType
+  totalAmount           Decimal                @db.Decimal(15, 2)
+  remainingAmount       Decimal                @db.Decimal(15, 2)
+  dueDate               DateTime?
+  interestRate          Decimal                @default(0.0) @db.Decimal(5, 2)
+  status                DebtStatus             @default(ACTIVE)
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+
+  user                  User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payments              DebtPayment[]
+
+  @@index([userId, status])
+  @@map("debts_loans")
+}
+
+model DebtPayment {
+  id                    String                 @id @default(uuid())
+  debtLoanId            String
+  walletId              String
+  amount                Decimal                @db.Decimal(15, 2)
+  paymentDate           DateTime               @default(now())
+  note                  String?
+
+  debtLoan              DebtLoan               @relation(fields: [debtLoanId], references: [id], onDelete: Cascade)
+  wallet                Wallet                 @relation(fields: [walletId], references: [id], onDelete: Restrict)
+
+  @@map("debt_payments")
+}
+
+model ReceiptAttachment {
+  id                    String                 @id @default(uuid())
+  transactionId         String
+  fileUrl               String
+  merchantName          String?
+  detectedAmount        Decimal?               @db.Decimal(15, 2)
+  rawOcrPayload         Json?                  // Chứa danh sách mặt hàng, thuế từ Vision AI
+  uploadedAt            DateTime               @default(now())
+
+  transaction           Transaction            @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  @@map("receipt_attachments")
+}
+
+model ExchangeRate {
+  id                    String                 @id @default(uuid())
+  fromCurrency          String
+  toCurrency            String                 @default("VND")
+  rate                  Decimal                @db.Decimal(18, 6)
+  effectiveDate         DateTime               @db.Date
+  updatedAt             DateTime               @updatedAt
+
+  @@unique([fromCurrency, toCurrency, effectiveDate])
+  @@map("exchange_rates")
+}
+
+model RecurringTransaction {
+  id                    String                 @id @default(uuid())
+  userId                String
+  walletId              String
+  categoryId            String
+  amount                Decimal                @db.Decimal(15, 2)
+  type                  TransactionType
+  frequency             FrequencyType          @default(MONTHLY)
+  startDate             DateTime
+  endDate               DateTime?
+  nextExecutionDate     DateTime
+  isActive              Boolean                @default(true)
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+
+  user                  User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  wallet                Wallet                 @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  category              Category               @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  @@index([nextExecutionDate, isActive])
+  @@map("recurring_transactions")
 }
 
 model PasswordReset {
-  id        String   @id @default(uuid())
-  email     String
-  token     String   @unique
-  expiresAt DateTime
-  createdAt DateTime @default(now())
+  id                    String                 @id @default(uuid())
+  email                 String
+  token                 String                 @unique
+  expiresAt             DateTime
+  createdAt             DateTime               @default(now())
 
-  user      User     @relation(fields: [email], references: [email], onDelete: Cascade)
+  user                  User                   @relation(fields: [email], references: [email], onDelete: Cascade)
+
+  @@index([token])
+  @@map("password_resets")
+}
+
+model SyncAuditLog {
+  id                    String                 @id @default(uuid())
+  userId                String
+  recordsProcessed      Int
+  conflictsResolved     Int                    @default(0)
+  clientDeviceInfo      String?
+  syncedAt              DateTime               @default(now())
+
+  user                  User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sync_audit_logs")
 }
