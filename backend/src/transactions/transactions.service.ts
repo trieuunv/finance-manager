@@ -2,10 +2,24 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { UpdateTransactionDto } from './dto/update-transaction.dto';
+import { TransactionType } from '@prisma/client';
 
 @Injectable()
 export class TransactionsService {
   constructor(private readonly prisma: PrismaService) {}
+
+  private serialize(t: any) {
+    if (!t) return t;
+    return {
+      ...t,
+      amount: Number(t.amount),
+      wallet: t.wallet ? { ...t.wallet, balance: Number(t.wallet.balance) } : undefined,
+      destinationWallet: t.destinationWallet
+        ? { ...t.destinationWallet, balance: Number(t.destinationWallet.balance) }
+        : undefined,
+      tags: t.tags ? t.tags.map((tt: any) => tt.tag || tt) : [],
+    };
+  }
 
   async findAll(
     userId: string,
@@ -30,7 +44,7 @@ export class TransactionsService {
     }
 
     if (query.type) {
-      where.type = query.type;
+      where.type = query.type as TransactionType;
     }
 
     if (query.startDate || query.endDate) {
@@ -52,8 +66,12 @@ export class TransactionsService {
       include: {
         wallet: true,
         category: true,
-        fromWallet: true,
-        toWallet: true,
+        destinationWallet: true,
+        tags: {
+          include: {
+            tag: true,
+          },
+        },
       },
       orderBy: { transactionDate: 'desc' },
       take: query.limit ? Number(query.limit) : undefined,
@@ -61,7 +79,7 @@ export class TransactionsService {
 
     return {
       success: true,
-      data: transactions,
+      data: transactions.map((t) => this.serialize(t)),
     };
   }
 
@@ -71,8 +89,12 @@ export class TransactionsService {
       include: {
         wallet: true,
         category: true,
-        fromWallet: true,
-        toWallet: true,
+        destinationWallet: true,
+        tags: {
+          include: {
+            tag: true,
+          },
+        },
       },
     });
 
@@ -80,7 +102,7 @@ export class TransactionsService {
       throw new NotFoundException('Giao dịch không tồn tại');
     }
 
-    return { success: true, data: transaction };
+    return { success: true, data: this.serialize(transaction) };
   }
 
   async create(userId: string, dto: CreateTransactionDto) {
@@ -91,11 +113,20 @@ export class TransactionsService {
       throw new NotFoundException('Ví không tồn tại');
     }
 
-    if (dto.type === 'EXPENSE' && wallet.balance < dto.amount) {
+    const txType = (dto.type as TransactionType) || TransactionType.EXPENSE;
+
+    if (txType === TransactionType.EXPENSE && Number(wallet.balance) < dto.amount) {
       throw new BadRequestException('Số dư trong ví không đủ để thực hiện chi tiêu');
     }
 
+    const destWalletId = dto.destinationWalletId || dto.toWalletId || null;
     const transactionDate = dto.transactionDate ? new Date(dto.transactionDate) : new Date();
+
+    const tagsCreate = dto.tagIds && dto.tagIds.length > 0
+      ? {
+          create: dto.tagIds.map((tagId) => ({ tagId })),
+        }
+      : undefined;
 
     const transaction = await this.prisma.transaction.create({
       data: {
@@ -103,23 +134,38 @@ export class TransactionsService {
         userId,
         walletId: dto.walletId,
         categoryId: dto.categoryId || null,
+        destinationWalletId: destWalletId,
         amount: dto.amount,
-        type: dto.type,
-        fromWalletId: dto.fromWalletId || null,
-        toWalletId: dto.toWalletId || null,
+        type: txType,
         transactionDate,
         note: dto.note || '',
+        tags: tagsCreate,
       },
       include: {
         wallet: true,
         category: true,
+        destinationWallet: true,
+        tags: {
+          include: {
+            tag: true,
+          },
+        },
       },
     });
 
     // Update wallet balance
     let balanceChange = 0;
-    if (dto.type === 'EXPENSE') balanceChange = -dto.amount;
-    else if (dto.type === 'INCOME') balanceChange = dto.amount;
+    if (txType === TransactionType.EXPENSE) {
+      balanceChange = -dto.amount;
+    } else if (txType === TransactionType.INCOME) {
+      balanceChange = dto.amount;
+    } else if (txType === TransactionType.TRANSFER && destWalletId) {
+      balanceChange = -dto.amount;
+      await this.prisma.wallet.update({
+        where: { id: destWalletId },
+        data: { balance: { increment: dto.amount } },
+      });
+    }
 
     const updatedWallet = await this.prisma.wallet.update({
       where: { id: wallet.id },
@@ -133,7 +179,7 @@ export class TransactionsService {
       message: '',
     };
 
-    if (dto.type === 'EXPENSE' && dto.categoryId) {
+    if (txType === TransactionType.EXPENSE && dto.categoryId) {
       const month = transactionDate.getMonth() + 1;
       const year = transactionDate.getFullYear();
 
@@ -148,7 +194,6 @@ export class TransactionsService {
       });
 
       if (budget) {
-        // Calculate total expenses for this category in month
         const startOfMonth = new Date(year, month - 1, 1);
         const endOfMonth = new Date(year, month, 0, 23, 59, 59, 999);
 
@@ -156,7 +201,7 @@ export class TransactionsService {
           where: {
             userId,
             categoryId: dto.categoryId,
-            type: 'EXPENSE',
+            type: TransactionType.EXPENSE,
             transactionDate: {
               gte: startOfMonth,
               lte: endOfMonth,
@@ -165,8 +210,9 @@ export class TransactionsService {
           _sum: { amount: true },
         });
 
-        const currentSpent = totalExpenseAgg._sum.amount || 0;
-        const percentage = Math.round((currentSpent / budget.amount) * 10000) / 100;
+        const currentSpent = Number(totalExpenseAgg._sum.amount || 0);
+        const limit = Number(budget.limitAmount);
+        const percentage = limit > 0 ? Math.round((currentSpent / limit) * 10000) / 100 : 0;
 
         if (percentage >= 100) {
           budgetAlert = {
@@ -187,8 +233,8 @@ export class TransactionsService {
     return {
       success: true,
       data: {
-        transaction,
-        updatedWalletBalance: updatedWallet.balance,
+        transaction: this.serialize(transaction),
+        updatedWalletBalance: Number(updatedWallet.balance),
         budgetAlert,
       },
     };
@@ -202,46 +248,60 @@ export class TransactionsService {
       throw new NotFoundException('Giao dịch không tồn tại');
     }
 
+    const existingAmount = Number(existing.amount);
+
     // Revert old balance
-    if (existing.type === 'EXPENSE') {
+    if (existing.type === TransactionType.EXPENSE) {
       await this.prisma.wallet.update({
         where: { id: existing.walletId },
-        data: { balance: { increment: existing.amount } },
+        data: { balance: { increment: existingAmount } },
       });
-    } else if (existing.type === 'INCOME') {
+    } else if (existing.type === TransactionType.INCOME) {
       await this.prisma.wallet.update({
         where: { id: existing.walletId },
-        data: { balance: { decrement: existing.amount } },
+        data: { balance: { decrement: existingAmount } },
       });
     }
+
+    const newType = dto.type ? (dto.type as TransactionType) : existing.type;
+    const newAmount = dto.amount !== undefined ? dto.amount : existingAmount;
 
     const updated = await this.prisma.transaction.update({
       where: { id },
       data: {
         walletId: dto.walletId || existing.walletId,
         categoryId: dto.categoryId !== undefined ? dto.categoryId : existing.categoryId,
-        amount: dto.amount || existing.amount,
-        type: dto.type || existing.type,
+        amount: newAmount,
+        type: newType,
         transactionDate: dto.transactionDate ? new Date(dto.transactionDate) : existing.transactionDate,
         note: dto.note !== undefined ? dto.note : existing.note,
       },
-      include: { wallet: true, category: true },
+      include: {
+        wallet: true,
+        category: true,
+        destinationWallet: true,
+        tags: {
+          include: {
+            tag: true,
+          },
+        },
+      },
     });
 
     // Apply new balance
-    if (updated.type === 'EXPENSE') {
+    if (updated.type === TransactionType.EXPENSE) {
       await this.prisma.wallet.update({
         where: { id: updated.walletId },
-        data: { balance: { decrement: updated.amount } },
+        data: { balance: { decrement: newAmount } },
       });
-    } else if (updated.type === 'INCOME') {
+    } else if (updated.type === TransactionType.INCOME) {
       await this.prisma.wallet.update({
         where: { id: updated.walletId },
-        data: { balance: { increment: updated.amount } },
+        data: { balance: { increment: newAmount } },
       });
     }
 
-    return { success: true, data: updated };
+    return { success: true, data: this.serialize(updated) };
   }
 
   async remove(userId: string, id: string) {
@@ -252,16 +312,27 @@ export class TransactionsService {
       throw new NotFoundException('Giao dịch không tồn tại');
     }
 
+    const amount = Number(existing.amount);
+
     // Revert wallet balance
-    if (existing.type === 'EXPENSE') {
+    if (existing.type === TransactionType.EXPENSE) {
       await this.prisma.wallet.update({
         where: { id: existing.walletId },
-        data: { balance: { increment: existing.amount } },
+        data: { balance: { increment: amount } },
       });
-    } else if (existing.type === 'INCOME') {
+    } else if (existing.type === TransactionType.INCOME) {
       await this.prisma.wallet.update({
         where: { id: existing.walletId },
-        data: { balance: { decrement: existing.amount } },
+        data: { balance: { decrement: amount } },
+      });
+    } else if (existing.type === TransactionType.TRANSFER && existing.destinationWalletId) {
+      await this.prisma.wallet.update({
+        where: { id: existing.walletId },
+        data: { balance: { increment: amount } },
+      });
+      await this.prisma.wallet.update({
+        where: { id: existing.destinationWalletId },
+        data: { balance: { decrement: amount } },
       });
     }
 

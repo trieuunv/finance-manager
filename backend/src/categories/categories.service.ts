@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
+import { TransactionType } from '@prisma/client';
 
 const DEFAULT_CATEGORIES = [
   // EXPENSES
@@ -8,7 +9,7 @@ const DEFAULT_CATEGORIES = [
     name: 'Ăn uống',
     icon: 'restaurant',
     color: '#EF4444',
-    type: 'EXPENSE',
+    type: TransactionType.EXPENSE,
     subs: [
       { name: 'Ăn trưa', icon: 'lunch_dining', color: '#F87171' },
       { name: 'Cà phê & Bánh', icon: 'local_cafe', color: '#FCA5A5' },
@@ -19,7 +20,7 @@ const DEFAULT_CATEGORIES = [
     name: 'Di chuyển',
     icon: 'directions_car',
     color: '#F59E0B',
-    type: 'EXPENSE',
+    type: TransactionType.EXPENSE,
     subs: [
       { name: 'Xăng xe', icon: 'local_gas_station', color: '#FBBF24' },
       { name: 'Bảo dưỡng xe', icon: 'build', color: '#FDE047' },
@@ -30,7 +31,7 @@ const DEFAULT_CATEGORIES = [
     name: 'Hóa đơn & Tiện ích',
     icon: 'receipt_long',
     color: '#3B82F6',
-    type: 'EXPENSE',
+    type: TransactionType.EXPENSE,
     subs: [
       { name: 'Tiền điện', icon: 'bolt', color: '#60A5FA' },
       { name: 'Tiền nước', icon: 'water_drop', color: '#93C5FD' },
@@ -41,7 +42,7 @@ const DEFAULT_CATEGORIES = [
     name: 'Mua sắm & Giải trí',
     icon: 'shopping_bag',
     color: '#EC4899',
-    type: 'EXPENSE',
+    type: TransactionType.EXPENSE,
     subs: [
       { name: 'Quần áo', icon: 'checkroom', color: '#F472B6' },
       { name: 'Xem phim & Chơi game', icon: 'sports_esports', color: '#FBCFE8' },
@@ -51,7 +52,7 @@ const DEFAULT_CATEGORIES = [
     name: 'Sức khỏe & Y tế',
     icon: 'medical_services',
     color: '#10B981',
-    type: 'EXPENSE',
+    type: TransactionType.EXPENSE,
     subs: [
       { name: 'Thuốc & Khám bệnh', icon: 'medication', color: '#34D399' },
     ],
@@ -61,21 +62,21 @@ const DEFAULT_CATEGORIES = [
     name: 'Lương',
     icon: 'payments',
     color: '#10B981',
-    type: 'INCOME',
+    type: TransactionType.INCOME,
     subs: [],
   },
   {
     name: 'Thưởng & Phụ cấp',
     icon: 'card_giftcard',
     color: '#06B6D4',
-    type: 'INCOME',
+    type: TransactionType.INCOME,
     subs: [],
   },
   {
     name: 'Đầu tư & Thu nhập khác',
     icon: 'trending_up',
     color: '#8B5CF6',
-    type: 'INCOME',
+    type: TransactionType.INCOME,
     subs: [],
   },
 ];
@@ -99,7 +100,6 @@ export class CategoriesService {
           icon: cat.icon,
           color: cat.color,
           type: cat.type,
-          isDefault: true,
         },
       });
 
@@ -112,7 +112,6 @@ export class CategoriesService {
             color: sub.color,
             type: cat.type,
             parentId: parent.id,
-            isDefault: true,
           },
         });
       }
@@ -123,16 +122,29 @@ export class CategoriesService {
     await this.seedDefaultCategories(userId);
 
     const categories = await this.prisma.category.findMany({
-      where: { userId },
+      where: {
+        userId,
+        parentId: null,
+      },
       include: {
-        subCategories: true,
+        children: true,
       },
       orderBy: { name: 'asc' },
     });
 
+    const serialized = categories.map((cat) => ({
+      ...cat,
+      isDefault: cat.userId === null,
+      subCategories: cat.children.map((sub) => ({
+        ...sub,
+        isDefault: sub.userId === null,
+        subCategories: [],
+      })),
+    }));
+
     return {
       success: true,
-      data: categories,
+      data: serialized,
     };
   }
 
@@ -146,32 +158,43 @@ export class CategoriesService {
       }
     }
 
+    const type = (dto.type as TransactionType) || TransactionType.EXPENSE;
+
     const category = await this.prisma.category.create({
       data: {
         userId,
         name: dto.name,
         icon: dto.icon || 'category',
         color: dto.color || '#38BDF8',
-        type: dto.type || 'EXPENSE',
+        type,
         parentId: dto.parentId || null,
-        isDefault: false,
+      },
+      include: {
+        children: true,
       },
     });
 
-    return { success: true, data: category };
+    return {
+      success: true,
+      data: {
+        ...category,
+        isDefault: false,
+        subCategories: [],
+      },
+    };
   }
 
   async remove(userId: string, id: string) {
     const category = await this.prisma.category.findFirst({
       where: { id, userId },
-      include: { subCategories: true },
+      include: { children: true },
     });
 
     if (!category) {
       throw new NotFoundException('Danh mục không tồn tại');
     }
 
-    if (category.subCategories.length > 0) {
+    if (category.children && category.children.length > 0) {
       throw new BadRequestException('Không thể xóa danh mục cha khi vẫn còn danh mục con');
     }
 
