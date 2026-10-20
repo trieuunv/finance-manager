@@ -22,7 +22,7 @@ export function convertAmount(
   return null;
 }
 
-const toDay = (d: Date) => new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+const toDay = (d: Date) => new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
 
 @Injectable()
 export class ExchangeRatesService {

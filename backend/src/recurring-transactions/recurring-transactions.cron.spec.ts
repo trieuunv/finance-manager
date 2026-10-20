@@ -101,4 +101,18 @@ describe('RecurringTransactionsService.processDue', () => {
     const r = await service.processDue(day('2026-01-01'));
     expect(r.executed).toBe(0);
   });
+
+  it('keeps processing other schedules when one fails', async () => {
+    const { service, created } = setup({ ...base, nextExecutionDate: day('2026-01-01') }, 1000);
+    const prisma = (service as never as { prisma: { recurringTransaction: { findMany: jest.Mock } } })
+      .prisma;
+    const good = prisma.recurringTransaction.findMany();
+    prisma.recurringTransaction.findMany.mockReturnValueOnce([
+      { ...base, id: 'bad', nextExecutionDate: undefined, wallet: { balance: 1000 }, category: {} },
+      ...good,
+    ]);
+    const r = await service.processDue(day('2026-01-01'));
+    expect(r.executed).toBe(1);
+    expect(created).toHaveLength(1);
+  });
 });

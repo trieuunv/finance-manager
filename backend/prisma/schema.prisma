@@ -132,6 +132,7 @@ model Transaction {
   categoryId            String?
   destinationWalletId   String?
   amount                Decimal                @db.Decimal(15, 2)
+  destinationAmount     Decimal?               @db.Decimal(15, 2) // Số tiền ví đích nhận (sau quy đổi tiền tệ)
   type                  TransactionType
   transactionDate       DateTime
   note                  String?

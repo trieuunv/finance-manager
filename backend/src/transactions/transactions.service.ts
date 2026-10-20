@@ -159,6 +159,7 @@ export class TransactionsService {
           categoryId: dto.categoryId || null,
           destinationWalletId: destWalletId,
           amount: dto.amount,
+          destinationAmount: txType === TransactionType.TRANSFER && destWalletId ? destCredit : null,
           type: txType,
           transactionDate,
           note: dto.note || '',
@@ -333,7 +334,7 @@ export class TransactionsService {
       });
       await this.prisma.wallet.update({
         where: { id: existing.destinationWalletId },
-        data: { balance: { decrement: amount } },
+        data: { balance: { decrement: Number(existing.destinationAmount ?? amount) } },
       });
     }
 

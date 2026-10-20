@@ -178,6 +178,7 @@ export class WalletsService {
           destinationWalletId: toWallet.id,
           type: TransactionType.TRANSFER,
           amount: dto.amount,
+          destinationAmount: creditAmount,
           transactionDate: transferDate,
           note: dto.note || `Chuyển từ ${fromWallet.name} sang ${toWallet.name}`,
         },
