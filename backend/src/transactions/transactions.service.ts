@@ -4,6 +4,7 @@ import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { UpdateTransactionDto } from './dto/update-transaction.dto';
 import { TransactionType } from '@prisma/client';
 import { serializeWallet } from '../common/utils/serialize';
+import { ExchangeRatesService } from '../exchange-rates/exchange-rates.service';
 
 const TRANSACTION_INCLUDE = {
   wallet: true,
@@ -14,7 +15,10 @@ const TRANSACTION_INCLUDE = {
 
 @Injectable()
 export class TransactionsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly exchangeRates: ExchangeRatesService,
+  ) {}
 
   private serialize(t: any) {
     if (!t) return t;
@@ -116,6 +120,27 @@ export class TransactionsService {
         }
       : undefined;
 
+    let destCredit = dto.amount;
+    if (txType === TransactionType.TRANSFER && destWalletId) {
+      const destWallet = await this.prisma.wallet.findFirst({
+        where: { id: destWalletId, userId },
+      });
+      if (!destWallet) throw new NotFoundException('Ví đích không tồn tại');
+      if (destWallet.currency !== wallet.currency) {
+        const converted = await this.exchangeRates.convert(
+          dto.amount,
+          wallet.currency,
+          destWallet.currency,
+        );
+        if (converted === null) {
+          throw new BadRequestException(
+            `Chưa có tỷ giá ${wallet.currency} -> ${destWallet.currency}`,
+          );
+        }
+        destCredit = Math.round(converted * 100) / 100;
+      }
+    }
+
     const balanceChange =
       txType === TransactionType.EXPENSE
         ? -dto.amount
@@ -145,7 +170,7 @@ export class TransactionsService {
       if (txType === TransactionType.TRANSFER && destWalletId) {
         await tx.wallet.update({
           where: { id: destWalletId },
-          data: { balance: { increment: dto.amount } },
+          data: { balance: { increment: destCredit } },
         });
       }
 

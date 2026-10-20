@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaModule } from './prisma/prisma.module';
@@ -14,11 +15,15 @@ import { DebtsLoansModule } from './debts-loans/debts-loans.module';
 import { TagsModule } from './tags/tags.module';
 import { RecurringTransactionsModule } from './recurring-transactions/recurring-transactions.module';
 import { OcrModule } from './ocr/ocr.module';
+import { ExchangeRatesModule } from './exchange-rates/exchange-rates.module';
+import { SplitBillsModule } from './split-bills/split-bills.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    ScheduleModule.forRoot(),
     PrismaModule,
+    ExchangeRatesModule,
     AuthModule,
     WalletsModule,
     CategoriesModule,
@@ -30,6 +35,7 @@ import { OcrModule } from './ocr/ocr.module';
     TagsModule,
     RecurringTransactionsModule,
     OcrModule,
+    SplitBillsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

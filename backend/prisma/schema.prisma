@@ -74,6 +74,7 @@ model User {
   recurringTransactions RecurringTransaction[]
   resetTokens           PasswordReset[]
   syncAuditLogs         SyncAuditLog[]
+  splitBills            SplitBill[]
 
   @@map("users")
 }
@@ -95,6 +96,7 @@ model Wallet {
   goalContributions     SavingsGoalContribution[]
   debtPayments          DebtPayment[]
   recurringTransactions RecurringTransaction[]
+  splitBills            SplitBill[]
 
   @@index([userId])
   @@map("wallets")
@@ -309,6 +311,39 @@ model RecurringTransaction {
 
   @@index([nextExecutionDate, isActive])
   @@map("recurring_transactions")
+}
+
+model SplitBill {
+  id                    String                 @id @default(uuid())
+  userId                String
+  walletId              String?                // Ví đã trả hóa đơn (null nếu không ghi nhận chi tiêu)
+  title                 String
+  totalAmount           Decimal                @db.Decimal(15, 2)
+  myShare               Decimal                @default(0.0) @db.Decimal(15, 2)
+  billDate              DateTime               @default(now())
+  note                  String?
+  createdAt             DateTime               @default(now())
+
+  user                  User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  wallet                Wallet?                @relation(fields: [walletId], references: [id], onDelete: SetNull)
+  shares                SplitShare[]
+
+  @@index([userId, billDate(sort: Desc)])
+  @@map("split_bills")
+}
+
+model SplitShare {
+  id                    String                 @id @default(uuid())
+  splitBillId           String
+  participantName       String
+  amount                Decimal                @db.Decimal(15, 2)
+  paidAmount            Decimal                @default(0.0) @db.Decimal(15, 2)
+  settledAt             DateTime?
+
+  splitBill             SplitBill              @relation(fields: [splitBillId], references: [id], onDelete: Cascade)
+
+  @@index([splitBillId])
+  @@map("split_shares")
 }
 
 model PasswordReset {

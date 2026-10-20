@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { CategoriesService } from './categories.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -12,6 +12,15 @@ export class CategoriesController {
   @Get()
   async findAll(@CurrentUser('id') userId: string) {
     return this.categoriesService.findAll(userId);
+  }
+
+  @Get('suggest')
+  async suggest(
+    @CurrentUser('id') userId: string,
+    @Query('note') note = '',
+    @Query('type') type?: string,
+  ) {
+    return this.categoriesService.suggest(userId, note, type);
   }
 
   @Post()
