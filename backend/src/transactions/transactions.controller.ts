@@ -1,8 +1,9 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Request, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { TransactionsService } from './transactions.service';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { UpdateTransactionDto } from './dto/update-transaction.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
 
 @Controller('transactions')
 @UseGuards(JwtAuthGuard)
@@ -11,7 +12,7 @@ export class TransactionsController {
 
   @Get()
   async findAll(
-    @Request() req,
+    @CurrentUser('id') userId: string,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
     @Query('walletId') walletId?: string,
@@ -20,7 +21,7 @@ export class TransactionsController {
     @Query('search') search?: string,
     @Query('limit') limit?: number,
   ) {
-    return this.transactionsService.findAll(req.user.id, {
+    return this.transactionsService.findAll(userId, {
       startDate,
       endDate,
       walletId,
@@ -32,22 +33,22 @@ export class TransactionsController {
   }
 
   @Get(':id')
-  async findOne(@Request() req, @Param('id') id: string) {
-    return this.transactionsService.findOne(req.user.id, id);
+  async findOne(@CurrentUser('id') userId: string, @Param('id') id: string) {
+    return this.transactionsService.findOne(userId, id);
   }
 
   @Post()
-  async create(@Request() req, @Body() dto: CreateTransactionDto) {
-    return this.transactionsService.create(req.user.id, dto);
+  async create(@CurrentUser('id') userId: string, @Body() dto: CreateTransactionDto) {
+    return this.transactionsService.create(userId, dto);
   }
 
   @Patch(':id')
-  async update(@Request() req, @Param('id') id: string, @Body() dto: UpdateTransactionDto) {
-    return this.transactionsService.update(req.user.id, id, dto);
+  async update(@CurrentUser('id') userId: string, @Param('id') id: string, @Body() dto: UpdateTransactionDto) {
+    return this.transactionsService.update(userId, id, dto);
   }
 
   @Delete(':id')
-  async remove(@Request() req, @Param('id') id: string) {
-    return this.transactionsService.remove(req.user.id, id);
+  async remove(@CurrentUser('id') userId: string, @Param('id') id: string) {
+    return this.transactionsService.remove(userId, id);
   }
 }

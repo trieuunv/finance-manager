@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../../core/constants/api_constants.dart';
+import '../../core/network/api_headers.dart';
 import '../models/report_summary_model.dart';
 
 class ReportApiService {
@@ -17,10 +18,7 @@ class ReportApiService {
 
     final response = await http.get(
       uri,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
+      headers: ApiHeaders.auth(token),
     );
 
     final resData = jsonDecode(response.body);

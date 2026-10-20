@@ -1,8 +1,9 @@
-import { Body, Controller, Delete, Get, Param, Post, Put, Request, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Put, UseGuards } from '@nestjs/common';
 import { RecurringTransactionsService } from './recurring-transactions.service';
 import { CreateRecurringTransactionDto } from './dto/create-recurring-transaction.dto';
 import { UpdateRecurringTransactionDto } from './dto/update-recurring-transaction.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
 
 @Controller('recurring-transactions')
 @UseGuards(JwtAuthGuard)
@@ -10,36 +11,36 @@ export class RecurringTransactionsController {
   constructor(private readonly recurringService: RecurringTransactionsService) {}
 
   @Get()
-  async findAll(@Request() req) {
-    return this.recurringService.findAll(req.user.id);
+  async findAll(@CurrentUser('id') userId: string) {
+    return this.recurringService.findAll(userId);
   }
 
   @Get(':id')
-  async findOne(@Request() req, @Param('id') id: string) {
-    return this.recurringService.findOne(req.user.id, id);
+  async findOne(@CurrentUser('id') userId: string, @Param('id') id: string) {
+    return this.recurringService.findOne(userId, id);
   }
 
   @Post()
-  async create(@Request() req, @Body() dto: CreateRecurringTransactionDto) {
-    return this.recurringService.create(req.user.id, dto);
+  async create(@CurrentUser('id') userId: string, @Body() dto: CreateRecurringTransactionDto) {
+    return this.recurringService.create(userId, dto);
   }
 
   @Put(':id')
   async update(
-    @Request() req,
+    @CurrentUser('id') userId: string,
     @Param('id') id: string,
     @Body() dto: UpdateRecurringTransactionDto,
   ) {
-    return this.recurringService.update(req.user.id, id, dto);
+    return this.recurringService.update(userId, id, dto);
   }
 
   @Delete(':id')
-  async remove(@Request() req, @Param('id') id: string) {
-    return this.recurringService.remove(req.user.id, id);
+  async remove(@CurrentUser('id') userId: string, @Param('id') id: string) {
+    return this.recurringService.remove(userId, id);
   }
 
   @Post(':id/execute')
-  async executeNow(@Request() req, @Param('id') id: string) {
-    return this.recurringService.executeNow(req.user.id, id);
+  async executeNow(@CurrentUser('id') userId: string, @Param('id') id: string) {
+    return this.recurringService.executeNow(userId, id);
   }
 }

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../../core/constants/api_constants.dart';
+import '../../core/network/api_headers.dart';
 import '../models/budget_model.dart';
 
 class BudgetApiService {
@@ -17,10 +18,7 @@ class BudgetApiService {
 
     final response = await http.get(
       uri,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
+      headers: ApiHeaders.auth(token),
     );
 
     final resData = jsonDecode(response.body);
@@ -42,10 +40,7 @@ class BudgetApiService {
   }) async {
     final response = await http.post(
       Uri.parse(ApiConstants.budgets),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
+      headers: ApiHeaders.auth(token),
       body: jsonEncode({
         'categoryId': categoryId,
         'amount': amount,
@@ -65,10 +60,7 @@ class BudgetApiService {
   static Future<void> deleteBudget(String token, String id) async {
     final response = await http.delete(
       Uri.parse('${ApiConstants.budgets}/$id'),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
+      headers: ApiHeaders.auth(token),
     );
 
     if (response.statusCode != 200) {

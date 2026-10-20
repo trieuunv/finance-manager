@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../../core/constants/api_constants.dart';
+import '../../core/network/api_headers.dart';
 import '../models/wallet_model.dart';
 
 class WalletFetchResult {
@@ -14,10 +15,7 @@ class WalletApiService {
   static Future<WalletFetchResult> getWallets(String token) async {
     final response = await http.get(
       Uri.parse(ApiConstants.wallets),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
+      headers: ApiHeaders.auth(token),
     );
 
     final resData = jsonDecode(response.body);
@@ -42,10 +40,7 @@ class WalletApiService {
   }) async {
     final response = await http.post(
       Uri.parse(ApiConstants.wallets),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
+      headers: ApiHeaders.auth(token),
       body: jsonEncode({
         'name': name,
         'type': type,
@@ -79,10 +74,7 @@ class WalletApiService {
 
     final response = await http.patch(
       Uri.parse('${ApiConstants.wallets}/$walletId'),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
+      headers: ApiHeaders.auth(token),
       body: jsonEncode(body),
     );
 
@@ -97,10 +89,7 @@ class WalletApiService {
   static Future<void> deleteWallet(String token, String walletId) async {
     final response = await http.delete(
       Uri.parse('${ApiConstants.wallets}/$walletId'),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
+      headers: ApiHeaders.auth(token),
     );
 
     if (response.statusCode != 200) {
@@ -118,10 +107,7 @@ class WalletApiService {
   }) async {
     final response = await http.post(
       Uri.parse(ApiConstants.walletTransfer),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
+      headers: ApiHeaders.auth(token),
       body: jsonEncode({
         'fromWalletId': fromWalletId,
         'toWalletId': toWalletId,

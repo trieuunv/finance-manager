@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../../core/constants/api_constants.dart';
+import '../../core/network/api_headers.dart';
 import '../models/auth_response.dart';
 import '../models/user_model.dart';
 
@@ -13,7 +14,7 @@ class AuthApiService {
   }) async {
     final response = await http.post(
       Uri.parse(ApiConstants.register),
-      headers: {'Content-Type': 'application/json'},
+      headers: ApiHeaders.json,
       body: jsonEncode({
         'email': email,
         'password': password,
@@ -38,7 +39,7 @@ class AuthApiService {
   }) async {
     final response = await http.post(
       Uri.parse(ApiConstants.login),
-      headers: {'Content-Type': 'application/json'},
+      headers: ApiHeaders.json,
       body: jsonEncode({
         'email': email,
         'password': password,
@@ -59,7 +60,7 @@ class AuthApiService {
   static Future<AuthResponse> forgotPassword({required String email}) async {
     final response = await http.post(
       Uri.parse(ApiConstants.forgotPassword),
-      headers: {'Content-Type': 'application/json'},
+      headers: ApiHeaders.json,
       body: jsonEncode({'email': email}),
     );
 
@@ -80,7 +81,7 @@ class AuthApiService {
   }) async {
     final response = await http.post(
       Uri.parse(ApiConstants.resetPassword),
-      headers: {'Content-Type': 'application/json'},
+      headers: ApiHeaders.json,
       body: jsonEncode({
         'token': token,
         'newPassword': newPassword,
@@ -101,10 +102,7 @@ class AuthApiService {
   static Future<UserModel> getMe(String token) async {
     final response = await http.get(
       Uri.parse(ApiConstants.getMe),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
+      headers: ApiHeaders.auth(token),
     );
 
     final responseData = jsonDecode(response.body);

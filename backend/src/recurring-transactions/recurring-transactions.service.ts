@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateRecurringTransactionDto } from './dto/create-recurring-transaction.dto';
 import { UpdateRecurringTransactionDto } from './dto/update-recurring-transaction.dto';
 import { FrequencyType, TransactionType } from '@prisma/client';
+import { serializeWallet } from '../common/utils/serialize';
 
 @Injectable()
 export class RecurringTransactionsService {
@@ -31,7 +32,7 @@ export class RecurringTransactionsService {
     return {
       ...rt,
       amount: Number(rt.amount),
-      wallet: rt.wallet ? { ...rt.wallet, balance: Number(rt.wallet.balance) } : undefined,
+      wallet: rt.wallet ? serializeWallet(rt.wallet) : undefined,
     };
   }
 
