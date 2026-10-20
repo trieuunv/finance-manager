@@ -3,6 +3,14 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { UpdateTransactionDto } from './dto/update-transaction.dto';
 import { TransactionType } from '@prisma/client';
+import { serializeWallet } from '../common/utils/serialize';
+
+const TRANSACTION_INCLUDE = {
+  wallet: true,
+  category: true,
+  destinationWallet: true,
+  tags: { include: { tag: true } },
+} as const;
 
 @Injectable()
 export class TransactionsService {
@@ -13,10 +21,8 @@ export class TransactionsService {
     return {
       ...t,
       amount: Number(t.amount),
-      wallet: t.wallet ? { ...t.wallet, balance: Number(t.wallet.balance) } : undefined,
-      destinationWallet: t.destinationWallet
-        ? { ...t.destinationWallet, balance: Number(t.destinationWallet.balance) }
-        : undefined,
+      wallet: t.wallet ? serializeWallet(t.wallet) : undefined,
+      destinationWallet: t.destinationWallet ? serializeWallet(t.destinationWallet) : undefined,
       tags: t.tags ? t.tags.map((tt: any) => tt.tag || tt) : [],
     };
   }
@@ -63,16 +69,7 @@ export class TransactionsService {
 
     const transactions = await this.prisma.transaction.findMany({
       where,
-      include: {
-        wallet: true,
-        category: true,
-        destinationWallet: true,
-        tags: {
-          include: {
-            tag: true,
-          },
-        },
-      },
+      include: TRANSACTION_INCLUDE,
       orderBy: { transactionDate: 'desc' },
       take: query.limit ? Number(query.limit) : undefined,
     });
@@ -86,16 +83,7 @@ export class TransactionsService {
   async findOne(userId: string, id: string) {
     const transaction = await this.prisma.transaction.findFirst({
       where: { id, userId },
-      include: {
-        wallet: true,
-        category: true,
-        destinationWallet: true,
-        tags: {
-          include: {
-            tag: true,
-          },
-        },
-      },
+      include: TRANSACTION_INCLUDE,
     });
 
     if (!transaction) {
@@ -128,48 +116,45 @@ export class TransactionsService {
         }
       : undefined;
 
-    const transaction = await this.prisma.transaction.create({
-      data: {
-        id: dto.id || undefined,
-        userId,
-        walletId: dto.walletId,
-        categoryId: dto.categoryId || null,
-        destinationWalletId: destWalletId,
-        amount: dto.amount,
-        type: txType,
-        transactionDate,
-        note: dto.note || '',
-        tags: tagsCreate,
-      },
-      include: {
-        wallet: true,
-        category: true,
-        destinationWallet: true,
-        tags: {
-          include: {
-            tag: true,
-          },
+    const balanceChange =
+      txType === TransactionType.EXPENSE
+        ? -dto.amount
+        : txType === TransactionType.INCOME
+          ? dto.amount
+          : txType === TransactionType.TRANSFER && destWalletId
+            ? -dto.amount
+            : 0;
+
+    const { transaction, updatedWallet } = await this.prisma.$transaction(async (tx) => {
+      const transaction = await tx.transaction.create({
+        data: {
+          id: dto.id || undefined,
+          userId,
+          walletId: dto.walletId,
+          categoryId: dto.categoryId || null,
+          destinationWalletId: destWalletId,
+          amount: dto.amount,
+          type: txType,
+          transactionDate,
+          note: dto.note || '',
+          tags: tagsCreate,
         },
-      },
-    });
-
-    // Update wallet balance
-    let balanceChange = 0;
-    if (txType === TransactionType.EXPENSE) {
-      balanceChange = -dto.amount;
-    } else if (txType === TransactionType.INCOME) {
-      balanceChange = dto.amount;
-    } else if (txType === TransactionType.TRANSFER && destWalletId) {
-      balanceChange = -dto.amount;
-      await this.prisma.wallet.update({
-        where: { id: destWalletId },
-        data: { balance: { increment: dto.amount } },
+        include: TRANSACTION_INCLUDE,
       });
-    }
 
-    const updatedWallet = await this.prisma.wallet.update({
-      where: { id: wallet.id },
-      data: { balance: { increment: balanceChange } },
+      if (txType === TransactionType.TRANSFER && destWalletId) {
+        await tx.wallet.update({
+          where: { id: destWalletId },
+          data: { balance: { increment: dto.amount } },
+        });
+      }
+
+      const updatedWallet = await tx.wallet.update({
+        where: { id: wallet.id },
+        data: { balance: { increment: balanceChange } },
+      });
+
+      return { transaction, updatedWallet };
     });
 
     // Check Budget Alert
@@ -276,16 +261,7 @@ export class TransactionsService {
         transactionDate: dto.transactionDate ? new Date(dto.transactionDate) : existing.transactionDate,
         note: dto.note !== undefined ? dto.note : existing.note,
       },
-      include: {
-        wallet: true,
-        category: true,
-        destinationWallet: true,
-        tags: {
-          include: {
-            tag: true,
-          },
-        },
-      },
+      include: TRANSACTION_INCLUDE,
     });
 
     // Apply new balance

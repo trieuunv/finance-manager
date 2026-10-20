@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../../core/constants/api_constants.dart';
+import '../../core/network/api_headers.dart';
 import '../models/transaction_model.dart';
 
 class TransactionCreateResult {
@@ -39,10 +40,7 @@ class TransactionApiService {
 
     final response = await http.get(
       uri,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
+      headers: ApiHeaders.auth(token),
     );
 
     final resData = jsonDecode(response.body);
@@ -68,10 +66,7 @@ class TransactionApiService {
   }) async {
     final response = await http.post(
       Uri.parse(ApiConstants.transactions),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
+      headers: ApiHeaders.auth(token),
       body: jsonEncode({
         'walletId': walletId,
         'categoryId': categoryId,
@@ -100,10 +95,7 @@ class TransactionApiService {
   static Future<void> deleteTransaction(String token, String id) async {
     final response = await http.delete(
       Uri.parse('${ApiConstants.transactions}/$id'),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
+      headers: ApiHeaders.auth(token),
     );
 
     if (response.statusCode != 200) {

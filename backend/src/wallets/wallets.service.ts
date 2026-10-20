@@ -4,6 +4,7 @@ import { CreateWalletDto } from './dto/create-wallet.dto';
 import { UpdateWalletDto } from './dto/update-wallet.dto';
 import { TransferWalletDto } from './dto/transfer-wallet.dto';
 import { WalletType, TransactionType } from '@prisma/client';
+import { serializeWallet } from '../common/utils/serialize';
 
 @Injectable()
 export class WalletsService {
@@ -15,10 +16,7 @@ export class WalletsService {
       orderBy: { createdAt: 'asc' },
     });
 
-    const serialized = wallets.map((w) => ({
-      ...w,
-      balance: Number(w.balance),
-    }));
+    const serialized = wallets.map(serializeWallet);
 
     const netWorth = serialized
       .filter((w) => !w.isExcludedFromTotal)
@@ -42,10 +40,7 @@ export class WalletsService {
 
     return {
       success: true,
-      data: {
-        ...wallet,
-        balance: Number(wallet.balance),
-      },
+      data: serializeWallet(wallet),
     };
   }
 
@@ -63,10 +58,7 @@ export class WalletsService {
 
     return {
       success: true,
-      data: {
-        ...wallet,
-        balance: Number(wallet.balance),
-      },
+      data: serializeWallet(wallet),
     };
   }
 
@@ -86,10 +78,7 @@ export class WalletsService {
 
     return {
       success: true,
-      data: {
-        ...updated,
-        balance: Number(updated.balance),
-      },
+      data: serializeWallet(updated),
     };
   }
 

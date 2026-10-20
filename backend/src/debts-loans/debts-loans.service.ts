@@ -4,6 +4,7 @@ import { CreateDebtLoanDto } from './dto/create-debt-loan.dto';
 import { UpdateDebtLoanDto } from './dto/update-debt-loan.dto';
 import { CreateDebtPaymentDto } from './dto/create-debt-payment.dto';
 import { DebtStatus, DebtType, TransactionType } from '@prisma/client';
+import { serializeWallet } from '../common/utils/serialize';
 
 @Injectable()
 export class DebtsLoansService {
@@ -26,7 +27,7 @@ export class DebtsLoansService {
         ? dl.payments.map((p: any) => ({
             ...p,
             amount: Number(p.amount),
-            wallet: p.wallet ? { ...p.wallet, balance: Number(p.wallet.balance) } : undefined,
+            wallet: p.wallet ? serializeWallet(p.wallet) : undefined,
           }))
         : undefined,
     };

@@ -1,16 +1,14 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../../core/constants/api_constants.dart';
+import '../../core/network/api_headers.dart';
 import '../models/category_model.dart';
 
 class CategoryApiService {
   static Future<List<CategoryModel>> getCategories(String token) async {
     final response = await http.get(
       Uri.parse(ApiConstants.categories),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
+      headers: ApiHeaders.auth(token),
     );
 
     final resData = jsonDecode(response.body);
@@ -33,10 +31,7 @@ class CategoryApiService {
   }) async {
     final response = await http.post(
       Uri.parse(ApiConstants.categories),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
+      headers: ApiHeaders.auth(token),
       body: jsonEncode({
         'name': name,
         'icon': icon,
@@ -57,10 +52,7 @@ class CategoryApiService {
   static Future<void> deleteCategory(String token, String id) async {
     final response = await http.delete(
       Uri.parse('${ApiConstants.categories}/$id'),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
+      headers: ApiHeaders.auth(token),
     );
 
     if (response.statusCode != 200) {
