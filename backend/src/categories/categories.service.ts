@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { TransactionType } from '@prisma/client';
+import { suggestCategories } from './category-suggestion';
 
 const DEFAULT_CATEGORIES = [
   // EXPENSES
@@ -203,5 +204,37 @@ export class CategoriesService {
     });
 
     return { success: true, message: 'Đã xóa danh mục thành công' };
+  }
+
+  async suggest(userId: string, note: string, type?: string) {
+    const history = await this.prisma.transaction.findMany({
+      where: {
+        userId,
+        categoryId: { not: null },
+        note: { not: '' },
+        type: type ? (type as TransactionType) : undefined,
+      },
+      select: { note: true, categoryId: true },
+      orderBy: { transactionDate: 'desc' },
+      take: 1000,
+    });
+
+    const suggestions = suggestCategories(
+      note,
+      history.map((h) => ({ note: h.note ?? '', categoryId: h.categoryId as string })),
+    );
+
+    const categories = await this.prisma.category.findMany({
+      where: { id: { in: suggestions.map((s) => s.categoryId) } },
+      select: { id: true, name: true, icon: true, color: true },
+    });
+
+    return {
+      success: true,
+      data: suggestions.flatMap((s) => {
+        const category = categories.find((c) => c.id === s.categoryId);
+        return category ? [{ ...s, category }] : [];
+      }),
+    };
   }
 }
