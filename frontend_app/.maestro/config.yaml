@@ -1,0 +1,3 @@
+# Chạy: maestro test .maestro --env TEST_EMAIL=... --env TEST_PASSWORD=...
+flows:
+  - flows/*

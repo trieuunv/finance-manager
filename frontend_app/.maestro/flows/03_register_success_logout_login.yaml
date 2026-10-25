@@ -1,0 +1,28 @@
+appId: com.example.frontend_app
+name: Register -> Home -> Logout -> Login lại
+tags: [auth, e2e]
+---
+- runScript: ../subflows/gen_user.js
+- runFlow: ../subflows/launch_clean.yaml
+- runFlow:
+    file: ../subflows/register.yaml
+    env:
+      NAME: ${output.name}
+      EMAIL: ${output.email}
+      PASSWORD: ${output.password}
+- extendedWaitUntil:
+    visible: 'Tổng Quan Tài Khoản'
+    timeout: 15000
+- assertVisible: 'Tính Năng Quản Lý'
+# Logout
+- tapOn: 'Đăng xuất'
+- assertVisible: 'ĐĂNG NHẬP'
+# Login bằng tài khoản vừa tạo
+- runFlow:
+    file: ../subflows/login.yaml
+    env:
+      EMAIL: ${output.email}
+      PASSWORD: ${output.password}
+- extendedWaitUntil:
+    visible: 'Tổng Quan Tài Khoản'
+    timeout: 15000
