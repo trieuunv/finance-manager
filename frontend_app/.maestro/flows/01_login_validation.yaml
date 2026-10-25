@@ -1,0 +1,14 @@
+appId: com.example.frontend_app
+name: Login - validation form rỗng / sai định dạng
+tags: [auth, smoke]
+---
+- runFlow: ../subflows/launch_clean.yaml
+# Form rỗng
+- tapOn: 'ĐĂNG NHẬP'
+- assertVisible: 'Vui lòng nhập Email'
+- assertVisible: 'Vui lòng nhập mật khẩu'
+# Email sai định dạng
+- tapOn: 'Email'
+- inputText: 'khong-phai-email'
+- tapOn: 'ĐĂNG NHẬP'
+- assertVisible: 'Email không hợp lệ'

@@ -1,0 +1,26 @@
+appId: com.example.frontend_app
+name: Phiên đăng nhập giữ nguyên sau khi mở lại app
+tags: [auth, e2e]
+---
+- runScript: ../subflows/gen_user.js
+- runFlow: ../subflows/launch_clean.yaml
+- runFlow:
+    file: ../subflows/register.yaml
+    env:
+      NAME: ${output.name}
+      EMAIL: ${output.email}
+      PASSWORD: ${output.password}
+- extendedWaitUntil:
+    visible: 'Tổng Quan Tài Khoản'
+    timeout: 15000
+# Kill + mở lại, KHÔNG clearState
+- stopApp
+- launchApp
+- extendedWaitUntil:
+    visible: 'Tổng Quan Tài Khoản'
+    timeout: 10000
+# Sau logout, mở lại phải về login
+- tapOn: 'Đăng xuất'
+- stopApp
+- launchApp
+- assertVisible: 'ĐĂNG NHẬP'
