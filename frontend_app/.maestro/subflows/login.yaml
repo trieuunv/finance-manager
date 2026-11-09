@@ -1,0 +1,9 @@
+# env: EMAIL, PASSWORD
+appId: com.example.frontend_app
+---
+- tapOn: 'Email'
+- inputText: ${EMAIL}
+- tapOn: 'Mật khẩu'
+- inputText: ${PASSWORD}
+- hideKeyboard
+- tapOn: 'ĐĂNG NHẬP'

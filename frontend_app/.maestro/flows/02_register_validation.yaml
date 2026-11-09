@@ -1,0 +1,27 @@
+appId: com.example.frontend_app
+name: Register - validation
+tags: [auth]
+---
+- runFlow: ../subflows/launch_clean.yaml
+- tapOn: 'Đăng ký ngay'
+- tapOn: 'ĐĂNG KÝ TÀI KHOẢN'
+- assertVisible: 'Vui lòng nhập Họ và tên'
+- assertVisible: 'Vui lòng nhập Email'
+- assertVisible: 'Vui lòng nhập mật khẩu'
+# Mật khẩu ngắn
+- tapOn: 'Mật khẩu'
+- inputText: '123'
+- tapOn: 'ĐĂNG KÝ TÀI KHOẢN'
+- assertVisible: 'Mật khẩu phải từ 8 ký tự trở lên'
+# Xác nhận không khớp
+- eraseText: 10
+- inputText: 'Maestro@123'
+- tapOn: 'Xác nhận mật khẩu'
+- inputText: 'Khac@12345'
+- tapOn: 'ĐĂNG KÝ TÀI KHOẢN'
+- assertVisible: 'Mật khẩu xác nhận không khớp'
+# Quay lại login
+- scrollUntilVisible:
+    element: 'Đăng nhập'
+- tapOn: 'Đăng nhập'
+- assertVisible: 'Đăng nhập tài khoản của bạn'

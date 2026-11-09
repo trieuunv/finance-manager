@@ -1,0 +1,6 @@
+appId: com.example.frontend_app
+---
+- launchApp:
+    clearState: true
+    clearKeychain: true
+- assertVisible: 'ĐĂNG NHẬP'

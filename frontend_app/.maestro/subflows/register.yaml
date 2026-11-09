@@ -1,0 +1,15 @@
+# env: NAME, EMAIL, PASSWORD
+appId: com.example.frontend_app
+---
+- tapOn: 'Đăng ký ngay'
+- assertVisible: 'ĐĂNG KÝ TÀI KHOẢN'
+- tapOn: 'Họ và tên'
+- inputText: ${NAME}
+- tapOn: 'Email'
+- inputText: ${EMAIL}
+- tapOn: 'Mật khẩu'
+- inputText: ${PASSWORD}
+- tapOn: 'Xác nhận mật khẩu'
+- inputText: ${PASSWORD}
+- hideKeyboard
+- tapOn: 'ĐĂNG KÝ TÀI KHOẢN'
